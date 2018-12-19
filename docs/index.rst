@@ -12,6 +12,7 @@
    providers
       * Active Directory Provider <active-directory-provider>
       * Azure Active Directory Provider <azure-active-directory-provider>
+   architecture
    support
    developer-setup
 
