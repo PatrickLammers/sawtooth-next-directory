@@ -138,12 +138,68 @@ Group Fields
 +---------------------+----------------------+---------------------+----------------------+----------------------+
 
 
+Domain Concepts
+===============
+NEXT is fundamentally a user permission system with a blockchain-based audit
+trail. A User​ ​in​ ​the​ ​system​ ​is​ ​granted​ ​permissions​ ​based​ ​on​ ​t
+he​ ​Roles​ ​they​
+​are members​ ​of:
+
+.. mermaid::
+
+    graph LR
+        User-- member of -->Role;
+
+Tasks​ ​describe​ ​individual permissions​ ​in​ ​the​ ​system.​ ​Tasks maintain the collection of Roles that ​are 
+authorized​ ​to​ ​perform​ ​that​ ​task:
+
+.. mermaid::
+
+    graph LR
+        User-- member of -->Role;
+        Task-- authorized -->Role;
+
+Roles​ ​are​ ​a hierarchical​ ​grouping​ ​of​ ​Users​ ​and​ ​Tasks.​ ​Roles​ ​maintain​ ​a​ ​list​ ​of​ ​Tasks​ ​they​ ​are​ ​a member​ ​of,​ ​this​ ​
+is​ ​the​ ​set​ ​of​ ​permissions​ ​the​ ​role​ ​imparts​ ​to​ ​its​ ​members.​ ​Roles​ ​also​ ​maintain​ ​a list​ ​of​ ​Users​ ​that​ ​are​ ​members,​ ​
+these​ ​members​ ​are​ ​granted​ ​permissions​ ​to​ ​perform.​ ​Roles​ ​are able​ ​to​ ​join​ ​other​ ​roles​ ​and​ ​be​ ​members​ ​of​ ​those​ ​roles,​ ​
+this​ ​imparts​ ​all​ ​of​ ​the​ ​permission​ ​from the​ ​Parent​ ​role​ ​to​ ​the​ ​member​ ​role.
+
+.. mermaid::
+
+    graph TD
+        User-- member of -->Role;
+        Task-- authorized -->Role;
+        Role-- members -->Task;
+        Role-- members --> User;
+
 
 
 Domain Model
 ============
+To understand how (and why) the blockchain stores data, it helps to have a traditional idea of what we're building.
+This section is designed give a conceptual idea of the data model so we are all speaking the same design language.
+
+.. mermaid::
+
+    graph LR
+        Self;
+        SysAdmin;
+        User;
+        Proposal;
+        Role;
+        Task;
+        Email;
+        Key;
+        Owner;
+        Administrator;
+
+        User-- Member of -->Role;
+        Role-- Members -->User;
+        Task-- Authorizes -->Role;
+        Role-- Member of -->Task;
 
 
+        
 
 Data Model
 ==========
@@ -152,28 +208,33 @@ This directory uses Sawtooth Hyperledger as the distributed ledger. This ledger 
 is available in the directory. However, since the data is stored in a Blockchain, the way you store data is a little
 different. 
 
+
 .. mermaid::
 
     graph TD
-        classDef default fill:#f9f,stroke:#333,stroke-width:4px;
-        classDef enum fill:#f9f,stroke:#333,stroke-width:4px;
-
-        ObjectType;
-        RelationshipType;
-        MessageActionType
-        AddressSpace;
-        class ObjectType enum;
-
-        FamilyAddress;
-        FamilyAddress==>BaseFamily;
-        Address;
+        Family==>BaseFamily
         AddressBase==>StateBase;
-        BaseFamily;
         BaseMessage==>AddressBase;
-        BaseTransactionProcessor;
         BaseRelationship==>AddressBase;
-        StateBase;
         EmailAddress==>AddressBase;
+
+        ProposalAction==>ProposalMessage
+        ProposalAddress==>AddressBase
+        ProposalConfirm==>ProposalAction
+        ProposalMessage==>BaseMessage
+        ProposalPropose==>ProposalMessage
+        ProposalReject==>ProposalAction
+
+        ConfirmAddRoleAdmin==>ProposalConfirm
+        ConfirmAddRoleMember==>ProposalConfirm
+        ConfirmAddRoleOwner==>ProposalConfirm
+        ConfirmAddRoleTask==>ProposalConfirm
+
+        CreateRole==>BaseMessage
+        ImportsRole==>BaseMessage
+        ProposeAddRoleAdmin==>ProposalPropose
+        ProposeAddRoleMember==>ProposalPropose
+
 
 
 Blockchain Storage
