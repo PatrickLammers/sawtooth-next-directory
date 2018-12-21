@@ -14,8 +14,6 @@ limitations under the License.
 ----------------------------------------------------------------------------- */
 
 
-#next-approver-people-content {
-  margin-top: 236px;
-  position: relative;
-  width: calc(100% - 65px) !important;
+#next-approver-people-list-container {
+  padding: 0 30px;
 }

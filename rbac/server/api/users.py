@@ -21,7 +21,7 @@ from sanic import Blueprint
 from sanic.response import json
 
 from rbac.common import rbac
-from rbac.common.logs import getLogger
+from rbac.common.logs import get_logger
 from rbac.common.crypto.keys import Key
 from rbac.common.crypto.secrets import encrypt_private_key
 
@@ -35,10 +35,9 @@ from rbac.server.db import proposals_query
 from rbac.server.db import roles_query
 from rbac.server.db import users_query
 
-from rbac.transaction_creation.manager_transaction_creation import propose_manager
 from rbac.common.crypto.secrets import generate_api_key
 
-LOGGER = getLogger(__name__)
+LOGGER = get_logger(__name__)
 USERS_BP = Blueprint("users")
 
 
@@ -132,9 +131,8 @@ async def update_manager(request, user_id):
 
     txn_key = await utils.get_transactor_key(request)
     proposal_id = str(uuid4())
-    batch_list, _ = propose_manager(
-        txn_key=txn_key,
-        batch_key=request.app.config.BATCHER_KEY_PAIR,
+    batch_list = rbac.user.manager.propose.batch_list(
+        signer_keypair=txn_key,
         proposal_id=proposal_id,
         user_id=user_id,
         new_manager_id=request.json.get("id"),

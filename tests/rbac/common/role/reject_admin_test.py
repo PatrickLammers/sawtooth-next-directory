@@ -29,17 +29,20 @@ LOGGER = logging.getLogger(__name__)
 @pytest.mark.library
 def test_make():
     """Test making the message"""
-    user_id = helper.user.id()
-    role_id = helper.role.id()
+    related_id = helper.user.id()
+    object_id = helper.role.id()
     proposal_id = helper.proposal.id()
     reason = helper.proposal.reason()
     message = rbac.role.admin.reject.make(
-        proposal_id=proposal_id, user_id=user_id, role_id=role_id, reason=reason
+        proposal_id=proposal_id,
+        related_id=related_id,
+        object_id=object_id,
+        reason=reason,
     )
-    assert isinstance(message, protobuf.role_transaction_pb2.RejectAddRoleAdmin)
+    assert isinstance(message, protobuf.proposal_transaction_pb2.UpdateProposal)
     assert message.proposal_id == proposal_id
-    assert message.user_id == user_id
-    assert message.role_id == role_id
+    assert message.related_id == related_id
+    assert message.object_id == object_id
     assert message.reason == reason
 
 
@@ -47,16 +50,19 @@ def test_make():
 @pytest.mark.library
 def test_make_addresses():
     """Test making the message addresses"""
-    user_id = helper.user.id()
-    role_id = helper.role.id()
+    related_id = helper.user.id()
+    object_id = helper.role.id()
     proposal_id = helper.proposal.id()
-    proposal_address = rbac.role.admin.propose.address(role_id, user_id)
+    proposal_address = rbac.role.admin.propose.address(object_id, related_id)
     reason = helper.proposal.reason()
     signer_keypair = helper.user.key()
-    signer_admin_address = rbac.role.admin.address(role_id, signer_keypair.public_key)
+    signer_admin_address = rbac.role.admin.address(object_id, signer_keypair.public_key)
     signer_user_address = rbac.user.address(signer_keypair.public_key)
     message = rbac.role.admin.reject.make(
-        proposal_id=proposal_id, user_id=user_id, role_id=role_id, reason=reason
+        proposal_id=proposal_id,
+        related_id=related_id,
+        object_id=object_id,
+        reason=reason,
     )
 
     inputs, outputs = rbac.role.admin.reject.make_addresses(
@@ -79,18 +85,20 @@ def test_create():
     reason = helper.role.admin.propose.reason()
     message = rbac.role.admin.reject.make(
         proposal_id=proposal.proposal_id,
-        role_id=proposal.object_id,
-        user_id=proposal.related_id,
-        reason=reason,
-    )
-    reject, status = rbac.role.admin.reject.create(
-        signer_keypair=role_admin_key,
-        message=message,
         object_id=proposal.object_id,
         related_id=proposal.related_id,
+        reason=reason,
     )
+
+    status = rbac.role.admin.reject.new(signer_keypair=role_admin_key, message=message)
+
     assert len(status) == 1
     assert status[0]["status"] == "COMMITTED"
+
+    reject = rbac.role.admin.propose.get(
+        object_id=proposal.object_id, related_id=proposal.related_id
+    )
+
     assert isinstance(reject, protobuf.proposal_state_pb2.Proposal)
     assert reject.proposal_type == protobuf.proposal_state_pb2.Proposal.ADD_ROLE_ADMIN
     assert reject.proposal_id == proposal.proposal_id

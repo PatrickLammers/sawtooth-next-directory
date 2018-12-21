@@ -23,7 +23,7 @@ from sanic import Sanic
 from sanic_cors import CORS
 from zmq.asyncio import ZMQEventLoop
 
-from rbac.common.logs import getLogger
+from rbac.common.logs import get_logger
 from rbac.common.config import get_config
 from rbac.common.crypto.keys import Key
 from rbac.common.sawtooth.messaging import Connection
@@ -41,7 +41,7 @@ from rbac.server.db import db_utils
 
 APP_BP = Blueprint("utils")
 
-LOGGER = getLogger(__name__)
+LOGGER = get_logger(__name__)
 
 
 async def init(app, loop):
@@ -75,8 +75,8 @@ def finish(app):
 def load_config(app):
     """Load configuration (alpabetical)"""
     app.config.AES_KEY = get_config("AES_KEY")
-    app.config.AIOHTTP_CONN_LIMIT = get_config("AIOHTTP_CONN_LIMIT")
-    app.config.AIOHTTP_DNS_TTL = get_config("AIOHTTP_DNS_TTL")
+    app.config.AIOHTTP_CONN_LIMIT = int(get_config("AIOHTTP_CONN_LIMIT"))
+    app.config.AIOHTTP_DNS_TTL = int(get_config("AIOHTTP_DNS_TTL"))
     app.config.BATCHER_KEY_PAIR = Key()
     app.config.CHATBOT_HOST = get_config("CHATBOT_HOST")
     app.config.CHATBOT_PORT = get_config("CHATBOT_PORT")

@@ -47,6 +47,31 @@ export class Role extends Component {
     getRole: PropTypes.func,
   };
 
+  /**
+   * Entry point to perform tasks required to render component.
+   * Fetch role if not loaded in client.
+   */
+  componentDidMount () {
+    this.init();
+  }
+
+
+  /**
+   * Called whenever Redux state changes.
+   * @param {object} prevProps Props before update
+   * @returns {undefined}
+   */
+  componentDidUpdate (prevProps) {
+    const { roleId } = this.props;
+    if (prevProps.roleId !== roleId) this.init();
+  }
+
+
+  init = () => {
+    const { getRole, roleId, roleFromId } = this.props;
+    roleId && !roleFromId(roleId) && getRole(roleId);
+  }
+
 
   isOwner = () => {
     const { me } = this.props;
@@ -84,6 +109,7 @@ export class Role extends Component {
           id='next-requester-grid-track-column'
           width={12}>
           <TrackHeader
+            inverted
             glyph={glyph}
             waves
             title={this.role.name}
@@ -96,15 +122,20 @@ export class Role extends Component {
                 proposal={this.proposal}
                 {...this.props}/>
             }
-            <Container id='next-requester-roles-description-container'>
+            <Container
+              className={!this.proposal ? 'next-margin-1' : ''}
+              id='next-requester-roles-description-container'>
               <div id='next-requester-roles-description'>
                 <h5>DESCRIPTION</h5>
                 {this.role.description || 'No description available.'}
               </div>
             </Container>
-            <MemberList {...this.props}
-              members={this.role.members}
-              owners={this.role.owners}/>
+            <Container id='next-requester-roles-member-list-container'>
+              <h5>MEMBERS</h5>
+              <MemberList {...this.props}
+                members={this.role.members}
+                owners={this.role.owners}/>
+            </Container>
           </div>
         </Grid.Column>
 
@@ -130,7 +161,7 @@ const mapStateToProps = (state, ownProps) => {
   const { roles } = state.requester;
 
   return {
-    roleId: RequesterSelectors.idFromSlug(state, roles, id),
+    roleId: id,
     proposalId: RequesterSelectors.proposalIdFromSlug(state, roles, id, 'role'),
   };
 };

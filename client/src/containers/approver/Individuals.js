@@ -58,8 +58,17 @@ class Individuals extends Component {
    * component. On load, get open proposals.
    */
   componentDidMount () {
-    const { getOpenProposals, openProposals } = this.props;
-    !openProposals && getOpenProposals();
+    const { getOpenProposals, openProposals, onBehalfOf } = this.props;
+    !openProposals && getOpenProposals(onBehalfOf);
+    document.querySelector('body').classList.add('minimal');
+  }
+
+
+  /**
+   * Component teardown
+   */
+  componentWillUnmount () {
+    document.querySelector('body').classList.remove('minimal');
   }
 
 

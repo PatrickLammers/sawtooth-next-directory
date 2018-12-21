@@ -17,6 +17,8 @@ limitations under the License.
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { shallow } from 'enzyme';
+import { BrowserRouter } from 'react-router-dom';
+
 
 import BrowseCard from './BrowseCard';
 
@@ -35,7 +37,7 @@ describe('BrowseCard component', () => {
     };
 
     ReactDOM.render(
-      <BrowseCard {...props} />, div
+      <BrowserRouter><BrowseCard {...props} /></BrowserRouter>, div
     );
     ReactDOM.unmountComponentAtNode(div);
   });

@@ -29,6 +29,7 @@ describe('RoleList component', () => {
     const div = document.createElement('div');
 
     const props = {
+      getRoles: () => {},
       getUsers: (collection) => { },
       openProposalsByUser: { proposal1: '', proposal2: '' },
       users: [{ id: 'proposal1' }],

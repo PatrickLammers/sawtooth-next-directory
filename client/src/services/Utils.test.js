@@ -20,9 +20,9 @@ import { createSlug, groupBy, merge } from './Utils';
 describe('Utils Service', () => {
 
   test('create slug', () => {
-    expect(createSlug('create Slug string')).toBe('create-slug-string');
-    expect(createSlug('', { name: 'create slug string' }))
-      .toBe('create-slug-string');
+    expect(createSlug('1234')).toBe('1234');
+    expect(createSlug('', { id: '1234' }))
+      .toBe('1234');
   });
 
   test('test groupby', () => {
