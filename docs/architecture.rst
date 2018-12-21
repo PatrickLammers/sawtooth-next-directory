@@ -137,116 +137,16 @@ Group Fields
 |                     |                      | visibility          |                      | visibility           |
 +---------------------+----------------------+---------------------+----------------------+----------------------+
 
-
-Domain Concepts
-===============
-NEXT is fundamentally a user permission system with a blockchain-based audit
-trail. A User​ ​in​ ​the​ ​system​ ​is​ ​granted​ ​permissions​ ​based​ ​on​ ​t
-he​ ​Roles​ ​they​
-​are members​ ​of:
-
-.. mermaid::
-
-    graph LR
-        User-- member of -->Role;
-
-Tasks​ ​describe​ ​individual permissions​ ​in​ ​the​ ​system.​ ​Tasks maintain the collection of Roles that ​are 
-authorized​ ​to​ ​perform​ ​that​ ​task:
-
-.. mermaid::
-
-    graph LR
-        User-- member of -->Role;
-        Task-- authorized -->Role;
-
-Roles​ ​are​ ​a hierarchical​ ​grouping​ ​of​ ​Users​ ​and​ ​Tasks.​ ​Roles​ ​maintain​ ​a​ ​list​ ​of​ ​Tasks​ ​they​ ​are​ ​a member​ ​of,​ ​this​ ​
-is​ ​the​ ​set​ ​of​ ​permissions​ ​the​ ​role​ ​imparts​ ​to​ ​its​ ​members.​ ​Roles​ ​also​ ​maintain​ ​a list​ ​of​ ​Users​ ​that​ ​are​ ​members,​ ​
-these​ ​members​ ​are​ ​granted​ ​permissions​ ​to​ ​perform.​ ​Roles​ ​are able​ ​to​ ​join​ ​other​ ​roles​ ​and​ ​be​ ​members​ ​of​ ​those​ ​roles,​ ​
-this​ ​imparts​ ​all​ ​of​ ​the​ ​permission​ ​from the​ ​Parent​ ​role​ ​to​ ​the​ ​member​ ​role.
-
-.. mermaid::
-
-    graph TD
-        User-- member of -->Role;
-        Task-- authorized -->Role;
-        Role-- members -->Task;
-        Role-- members --> User;
-
-
-
-Domain Model
-============
-To understand how (and why) the blockchain stores data, it helps to have a traditional idea of what we're building.
-This section is designed give a conceptual idea of the data model so we are all speaking the same design language.
-
-.. mermaid::
-
-    graph LR
-        Self;
-        SysAdmin;
-        User;
-        Proposal;
-        Role;
-        Task;
-        Email;
-        Key;
-        Owner;
-        Administrator;
-
-        User-- Member of -->Role;
-        Role-- Members -->User;
-        Task-- Authorizes -->Role;
-        Role-- Member of -->Task;
-
-
-        
-
-Data Model
-==========
-
-This directory uses Sawtooth Hyperledger as the distributed ledger. This ledger contains all of the information that
-is available in the directory. However, since the data is stored in a Blockchain, the way you store data is a little
-different. 
-
-
-.. mermaid::
-
-    graph TD
-        Family==>BaseFamily
-        AddressBase==>StateBase;
-        BaseMessage==>AddressBase;
-        BaseRelationship==>AddressBase;
-        EmailAddress==>AddressBase;
-
-        ProposalAction==>ProposalMessage
-        ProposalAddress==>AddressBase
-        ProposalConfirm==>ProposalAction
-        ProposalMessage==>BaseMessage
-        ProposalPropose==>ProposalMessage
-        ProposalReject==>ProposalAction
-
-        ConfirmAddRoleAdmin==>ProposalConfirm
-        ConfirmAddRoleMember==>ProposalConfirm
-        ConfirmAddRoleOwner==>ProposalConfirm
-        ConfirmAddRoleTask==>ProposalConfirm
-
-        CreateRole==>BaseMessage
-        ImportsRole==>BaseMessage
-        ProposeAddRoleAdmin==>ProposalPropose
-        ProposeAddRoleMember==>ProposalPropose
-
-
-
 Blockchain Storage
 ==================
 
-The underlying distributed ledger (aka Blockchain) implementation we're using is the Sawtooth Hyperledger.
-The generic model of this ledger is a key-value store with a hash key indexing to an opaque string. This
-string is most often a base64-encoded JSON document. Internally, the data structure is actually a Merkle Tree,
-but that's not important this concept. 
+The underlying distributed ledger (aka Blockchain) implementation we're using
+is Sawtooth Hyperledger. The generic model of this ledger is a key-value store
+with an address key indexing to an opaque string. This string is most often a
+base-64 encoded serialized string. pt. 
 
-Applications that work with the Hyperledger platform get to determine their own key structure, with some
-restrictions. The generic format of the key is as follows:
+Applications that work with the Sawtooth platform must determine how to index 
+their data and keys. The specification from Sawtooth:
 
 .. figure:: _static/hyperledger_addressing.png
     :width: 958px
@@ -254,7 +154,7 @@ restrictions. The generic format of the key is as follows:
     :alt: Hyperledger Addressing
     :figclass: align-center
 
-We have chosen to encode our keys in the following manner:
+We have chosen to encode our addresses in the following manner:
 
 +---------------------+----------------------+---------------------+-------------------------+
 |  Bytes              |  Purpose             |  Example            |  Extra                  |
@@ -276,4 +176,68 @@ We have chosen to encode our keys in the following manner:
 | 34 (1 Byte)         | Reserved             | 0x00                | Reserved by System      |
 +---------------------+----------------------+---------------------+-------------------------+
 
+Given this scheme, we can refer to entries as a tuple:
+
+.. code::
+
+   Address ~= (ObjectType, ObjectId, RelationshipType, RelatedType, RelatedId)
+
+This reads a bit like a sentence: User<X> is <a member of> Role<Y>. Given that
+we are storing this in (essentially) a key-value store, this data structure
+gives us something akin to an adjacency list.
+
+Domain Concepts
+===============
+
+.. csv-table:: Domain Objects
+   :header: "Code", "Object", "Purpose"
+   :widths: auto
+
+    "00", "None", "This represents a null object."
+    "20", "SysAdmin", "A super-user that can perform administrative tasks"
+    "30", "User", "A User is an entity representing an individual or service account"
+    "40", "Proposal", "Encapsulates request to modify permissions"
+    "50", "Role", "A Role maintains a list of Users assigned to that Role, as well as a list of Tasks that members are authorized for"
+    "60", "Task", "A Task is an individual unit of Permission"
+    "70", "Email", "Email-type object"
+    "80", "Key", "Users' Public Key(s)"
+    "90", "UUID", "Not sure"
+
+.. csv-table:: Relationships
+   :header: "Code", "Relationship", "Purpose"
+   :widths: auto
+
+    "00", "None", "This represents a null relationship."
+    "10", "Attributes", "Deprecated; Being removed"
+    "20", "Member", "RelatedId is a member of ObjectId"
+    "30", "Owner", "RelatedId is owner of ObjectId"
+    "40", "Admin", "RelatedId is an admin of ObjectId"
+    "50", "Manager", "RelatedId is the manager of ObjectId"
+    "60", "Direct Report", "RelatedID is a direct report of ObjectId"
+
+.. csv-table:: Valid Tuples, Meanings
+   :header: "ObjectType", "RelationshipType", "RelatedType", "Description"
+   :widths: auto
+
+    "User", "None", "None", "User Identity Record"
+    "Proposal", "None", "None", "Proposal Identity Record"
+    "SysAdmin", "Attributes", "-any-", "Deprecated; Being removed"
+    "SysAdmin", "Member", "User", "User is a SysAdmin Member"
+    "SysAdmin", "Owner", "User", "User is a SysAdmin Owner (what does this mean???)"
+    "SysAdmin", "Admin", "User", "User is a SysAdmin Admin (what does this mean???)"
+    "Role", "Attributes", "-any-", "Deprecated; Being removed"
+    "Role", "Member", "User", "User is member of Role"
+    "Role", "Member", "Role2", "Role2 is member of Role"
+    "Role", "Owner", "User", "User is owner of Role"
+    "Role", "Admin", "User", "User is admin of Role"
+    "Role", "???", "???", "ROLES_TASKS = 11"
+    "???", "???", "???", "TASKS_ATTRIBUTES = 12"
+    "???", "???", "???", "TASKS_OWNERS = 13"
+    "???", "???", "???", "TASKS_ADMINS = 14"
+    "???", "???", "???", "EMAIL = 16"
+    "???", "???", "???", "USER_EMAIL = 17"
+    "???", "???", "???", "USER_KEY = 18"
+    "???", "???", "???", "USER_MANAGER = 19"
+    "???", "???", "???", "USER_DIRECT_REPORT = 20"
+    "???", "???", "???", "KEY = 21"
 
