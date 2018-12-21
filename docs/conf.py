@@ -41,6 +41,7 @@ release = '0.0'
 extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinxcontrib.mermaid',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -100,6 +101,9 @@ html_static_path = ['_static']
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
+
+# -- Options for Mermaid -----------------------------------------------------
+mermaid_params = ['--backgroundColor', 'transparent']
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
