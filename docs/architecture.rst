@@ -137,99 +137,40 @@ Group Fields
 |                     |                      | visibility          |                      | visibility           |
 +---------------------+----------------------+---------------------+----------------------+----------------------+
 
-Blockchain Storage
-==================
-
-The underlying distributed ledger (aka Blockchain) implementation we're using
-is Sawtooth Hyperledger. The generic model of this ledger is a key-value store
-with an address key indexing to an opaque string. This string is most often a
-base-64 encoded serialized string. pt. 
-
-Applications that work with the Sawtooth platform must determine how to index 
-their data and keys. The specification from Sawtooth:
-
-.. figure:: _static/hyperledger_addressing.png
-    :width: 958px
-    :align: center
-    :alt: Hyperledger Addressing
-    :figclass: align-center
-
-We have chosen to encode our addresses in the following manner:
-
-+---------------------+----------------------+---------------------+-------------------------+
-|  Bytes              |  Purpose             |  Example            |  Extra                  |
-+=====================+======================+=====================+=========================+
-| 0-2 (3 Bytes)       | Namespace            | role_id             | Always 'bac001', UTF-8  |
-+---------------------+----------------------+---------------------+-------------------------+
-| 3-4 (2 Bytes)       | Reserved             | 0x0000              | Reserved by System      |
-+---------------------+----------------------+---------------------+-------------------------+
-| 5-6 (2 Bytes)       | Object Type          | 0x4444 (Proposal)   | Enum in address_space.py|
-+---------------------+----------------------+---------------------+-------------------------+
-| 7-18 (12 Bytes)     | Object ID Hash       | 0xE8A76745B898A9C76 | We generate this hash   |
-+---------------------+----------------------+---------------------+-------------------------+
-| 19-20 (2 Bytes)     | Related Object Type  | 0x5555 (Role)       | Enum in address_space.py|
-+---------------------+----------------------+---------------------+-------------------------+
-| 21 (1 Byte)         | Relationship Type    | 0x88 (Manager)      | Enum in address_space.py|
-+---------------------+----------------------+---------------------+-------------------------+
-| 22-33 (12 Bytes)    | Related Obj ID Hash  | 0xFFFFFF45B898A9CFF | All 0-byte for 'None'   |
-+---------------------+----------------------+---------------------+-------------------------+
-| 34 (1 Byte)         | Reserved             | 0x00                | Reserved by System      |
-+---------------------+----------------------+---------------------+-------------------------+
-
-Given this scheme, we can refer to entries as a tuple:
-
-.. code::
-
-   Address ~= (ObjectType, ObjectId, RelationshipType, RelatedType, RelatedId)
-
-This reads a bit like a sentence: User<X> is <a member of> Role<Y>. Given that
-we are storing this in (essentially) a key-value store, this data structure
-gives us something akin to an adjacency list.
 
 Domain Concepts
 ===============
+The workflow of this system is a proposal-based asynchronous messaging
+platform. Messages propose changes to the global state, and then are
+confirmed or rejected by others with the appropriate permissions.
+
+The core domain objects:
 
 .. csv-table:: Domain Objects
-   :header: "Code", "Object", "Purpose"
+   :header: "Object", "Purpose"
    :widths: auto
 
-    "00", "None", "This represents a null object."
-    "20", "SysAdmin", "A super-user that can perform administrative tasks"
-    "30", "User", "A User is an entity representing an individual or service account"
-    "40", "Proposal", "Encapsulates request to modify permissions"
-    "50", "Role", "A Role maintains a list of Users assigned to that Role, as well as a list of Tasks that members are authorized for"
-    "60", "Task", "A Task is an individual unit of Permission"
-    "70", "Email", "Email-type object"
-    "80", "Key", "Users' Public Key(s)"
-    "90", "UUID", "Not sure"
+    "SysAdmin", "A special NEXT system administrator role"
+    "User",     "A User is an entity representing an individual or service account"
+    "Proposal", "Encapsulates request to modify permissions"
+    "Role",     "A Role maintains a list of Users assigned to that Role, as well as a list of Tasks that members are authorized for"
+    "Task",     "A Task is an individual unit of Permission"
+    "Email",    "Email-type object"
+    "Key",      "Users' Public Key(s)"
 
-.. csv-table:: Relationships
-   :header: "Code", "Relationship", "Purpose"
+Roles and Tasks can have Owners, Admins, and Members. Roles can additionally have Tasks.
+
+.. csv-table:: Role and Task Admin/Owner/Member
+   :header: "RoleType", "Purpose"
    :widths: auto
 
-    "00", "None", "This represents a null relationship."
-    "10", "Attributes", "Deprecated; Being removed"
-    "20", "Member", "RelatedId is a member of ObjectId"
-    "30", "Owner", "RelatedId is owner of ObjectId"
-    "40", "Admin", "RelatedId is an admin of ObjectId"
-    "50", "Manager", "RelatedId is the manager of ObjectId"
-    "60", "Direct Report", "RelatedID is a direct report of ObjectId"
+    "Admin",  "Implies Owner; Can add/remove Owners and Admins"
+    "Member", "User is a member of role/task for authorization purposes"
+    "Owner",  "Implies Member; Can approve/reject/modify membership"
+    "Task",   "Role only; A permission granted to members of this group"
 
-.. csv-table:: Message Action Type
-   :header: "Code", "Relationship", "Purpose"
-   :widths: auto
-
-    "0", "None", "This represents a null action type"
-    "1", "Create", "Message wants to create object"
-    "2", "Update", "Message wants to update object"
-    "3", "Delete", "Message wants to delete object"
-    "4", "Add", "Message wants to add item to collection"
-    "5", "Remove", "Message wants to remove item from collection"
-    "6", "Imports", "???"
-    "10", "Propose", "Propose message (???)"
-    "11", "Confirm", "Confirm message (???)"
-    "12", "Reject", "Reject message (???)"
-
+Changes to the global state are done through proposals in a message queue. A
+few representative message examples (not comprehensive):
 
 .. csv-table:: Messages
    :header: "NEXT Message",        "ActionType", "SubActionType", "AddressType",      "ObjectType", "RelatedType", "RelationshipType", "Description"
@@ -260,4 +201,98 @@ Domain Concepts
     "CREATE_USER",                 "Create",     "None",          "User",             "User",       "None",        "Attributes",       ""
     "PROPOSE_UPDATE_USER_MANAGER", "Propose",    "Update",        "Proposals",        "User",       "User",        "Manager",          ""
     "REJECT_UPDATE_USER_MANAGER",  "Reject",     "Update",        "Proposals",        "User",       "User",        "Manager",          ""
+
+Notice that every Proposal has related Confirm and Reject messages.
+
+Blockchain Storage
+==================
+
+The underlying distributed ledger (aka Blockchain) implementation we're using
+is Sawtooth. The generic model of this ledger is a key-value store
+with an address key indexing to an opaque string. This string is a serialized
+and compressed protobuf. 
+
+Applications that work with the Sawtooth platform must determine how to index
+their data and keys. Sawtooth gives the following specification:
+
+.. figure:: _static/hyperledger_addressing.png
+    :width: 958px
+    :align: center
+    :alt: Hyperledger Addressing
+    :figclass: align-center
+
+Given this, we have chosen to address our data like so:
+
++---------------------+----------------------+---------------------+-------------------------+
+|  Bytes              |  Purpose             |  Example            |  Extra                  |
++=====================+======================+=====================+=========================+
+| 0-2 (3 Bytes)       | Namespace            | 'bac001'            | Always 'bac001', UTF-8  |
++---------------------+----------------------+---------------------+-------------------------+
+| 3-4 (2 Bytes)       | Reserved             | 0x0000              | Always 0x0000; Reserved |
++---------------------+----------------------+---------------------+-------------------------+
+| 5-6 (2 Bytes)       | Object Type          | 0x0028 (Proposal)   | See "Domain Objects"    |
++---------------------+----------------------+---------------------+-------------------------+
+| 7-18 (12 Bytes)     | Object ID Hash       | 0x....abcd123456789 | We generate this hash   |
++---------------------+----------------------+---------------------+-------------------------+
+| 19-20 (2 Bytes)     | Related Object Type  | 0x0032 (Role)       | See "Domain Objects"    |
++---------------------+----------------------+---------------------+-------------------------+
+| 21 (1 Byte)         | Relationship Type    | 0x88 (Manager)      |                         |
++---------------------+----------------------+---------------------+-------------------------+
+| 22-33 (12 Bytes)    | Related Obj ID Hash  | 0x....abcd123456789 | All 0-byte for 'None'   |
++---------------------+----------------------+---------------------+-------------------------+
+| 34 (1 Byte)         | Reserved             | 0x00                | Always 0x00; Reserved   |
++---------------------+----------------------+---------------------+-------------------------+
+
+Given this scheme, we can refer to entries as a tuple:
+
+.. code::
+
+   Address ~= (ObjectType, ObjectId, RelatedType, RelationshipType, RelatedId)
+
+This reads a bit like a sentence: User<X> is <a member of> Role<Y>. Given that
+we are storing this in (essentially) a key-value store, this data structure
+gives us something akin to an adjacency list.
+
+There are two parts to storage: the address and the payload. Some facts about
+the state of the system can be checked by the mere presence of data at an
+address. For example, a user's membership in a role can be validated by
+requesting the tuple (Role, :code:`0x123...`, User, Member, :code:`0x456...`).
+
+Messages are not persisted on the blockchain, but proposals are.
+The primary structures stored on the blockchain include:
+
+.. csv-table:: Addressing Types
+    :header: "ObjectType", "RelatedType", "RelationshipType", "Purpose"
+    :widths: auto
+
+    "SysAdmin", "None", "Attributes", "A System Maintainer Role record"
+    "User",     "None", "Attributes", "A User record"
+    "Proposal", "None", "Attributes", "A Proposal record"
+    "Role",     "None", "Attributes", "A Role record"
+    "Task",     "None", "Attributes", "A Task record"
+    "Email",    "None", "None",       "An Email record"
+    "Key",      "None", "None",       "A User's Public/Private Key Record"
+
+Notice the "RelatedType" is "None" for all of those. Relationships:
+
+.. csv-table:: Addressing Relationships
+   :header: "ObjectType", "RelatedObjectType", "RelationshipType", "Purpose"
+   :widths: auto
+
+    "SysAdmin", "User",  "Admin",        "User is an admin of SysAdmin Role"
+    "SysAdmin", "User",  "Member",       "User is a member of SysAdmin role"
+    "SysAdmin", "User",  "Owner",        "User is an owner of SysAdmin role"
+
+    "User",     "Email", "Owner",        "User's Email Address"
+    "User",     "Key",   "Owner",        "User's Keypair Information"
+    "User",     "User",  "Manager",      "User2 is manager of User1"
+    "User",     "User",  "DirectReport", "User2 is direct report of User1"
+
+    "Role",     "User",  "Admin",        "User is an admin of Role"
+    "Role",     "User",  "Member",       "User is a member of Role"
+    "Role",     "User",  "Owner",        "User is an owner of Role"
+    "Role",     "Task",  "Member",       "Task is a member of Role"
+
+    "Task",     "User",  "Admin",        "User is an admin of Task"
+    "Task",     "User",  "Owner",        "User is an owner of Task"
 
